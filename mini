@@ -1,0 +1,517 @@
+//Util.h
+#pragma once
+#include <Windows.h>
+
+#define WINDOW_WIDTH 17
+#define WINDOW_HEIGHT 17
+#define sizeCell 40
+#define ScaleMap 1
+
+void CursorGotoXY(int x, int y);
+int GetRandomNumber(int vlMax);
+
+////////////////////////////////////////////////////////////////
+
+//Util.cpp
+#include "Util.h"
+#include <time.h>
+
+void CursorGotoXY(int x, int y)
+{
+	COORD pos = {x, y};
+	HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleCursorPosition(output, pos);
+}
+
+int GetRandomNumber(int vlMax)
+{
+//	srand(time(NULL));
+	int r = rand();
+	return r % vlMax;
+}
+
+//////////////////////////////////////////////////////////////////
+
+//Point2D.h
+#pragma once
+class Point2D
+{
+private:
+	int _x, _y;
+	char _c;
+public:
+	Point2D() {};
+	Point2D(int x, int y, char c);
+	~Point2D();
+	int GetX();
+	int GetY();
+	char GetC();
+	void SetX(int x);
+	void SetY(int y);
+
+	void MoveUp();
+	void MoveDown();
+	void MoveRight();
+	void MoveLeft();
+
+	void Display();
+	void Clean();
+
+	void operator=(Point2D point)
+	{
+		_x = point._x; _y = point._y; _c = point._c;
+	}
+};
+
+/////////////////////////////////////////////////////////////
+
+//Point2D.cpp
+#include "Point2D.h"
+#include "Util.h"
+#include <iostream>
+
+Point2D::Point2D(int x, int y, char c)
+{
+	_x = x; _y = y; _c = c;
+}
+Point2D::~Point2D(){}
+int Point2D::GetX()
+{
+	return _x;
+}
+int Point2D::GetY()
+{
+	return _y;
+}
+char Point2D::GetC()
+{
+	return _c;
+}
+
+void Point2D::SetX(int x)
+{
+	_x = x;
+}
+void Point2D::SetY(int y)
+{
+	_y = y;
+}
+
+void Point2D::Display()
+{
+	CursorGotoXY(_x, _y);
+	std::cout << _c;
+}
+
+void Point2D::Clean()
+{
+	CursorGotoXY(_x, _y);
+	std::cout << " ";
+}
+
+void Point2D::MoveLeft()
+{
+	_x--;
+}
+
+void Point2D::MoveRight()
+{
+	_x++;
+}
+void Point2D::MoveUp()
+{
+	_y--;
+}
+void Point2D::MoveDown()
+{
+	_y++;
+}
+
+/////////////////////////////////////////////////////////////////
+
+//Map2D.h
+#pragma once
+#include "Point2D.h"
+#include "Util.h"
+#include <SFML/Graphics.hpp>
+
+class Map2D
+{
+private:
+	void InitMap();
+	Point2D _map[WINDOW_HEIGHT][WINDOW_WIDTH];
+public:
+	Map2D();
+	~Map2D();
+	char GetC(int x, int y);
+	void DisplayMap();
+//	void DisplayMapUI(sf::Sprite &spWhite, sf::Sprite &spBlue, sf::RenderWindow &window);
+};
+
+/////////////////////////////////////////////////////////////////////
+
+//Map2D.cpp
+#pragma once
+#include "Map2D.h"
+#include "Util.h"
+#include "Point2D.h"
+#include <SFML/Graphics.hpp>
+
+void Map2D::InitMap() {
+	for (int y = 0; y < WINDOW_HEIGHT; y++) {
+		for (int x = 0; x < WINDOW_WIDTH; x++) {
+			if (y == 0 || x == 0 || y == WINDOW_HEIGHT - 1 || x == WINDOW_WIDTH - 1 || ((x%2) == 0 && (y%2) == 0))
+				_map[y][x] = Point2D(x, y, '#');
+			else
+				_map[y][x] = Point2D(x, y, ' ');
+		}
+	}
+}
+
+Map2D::Map2D(){
+	InitMap();
+}
+
+Map2D::~Map2D(){
+}
+
+char Map2D::GetC(int x, int y)
+{
+	char _c;
+	return _c = _map[x][y].GetC();
+}
+
+
+void Map2D::DisplayMap() {
+	for (int y = 0; y < WINDOW_HEIGHT; y++)
+		for (int x = 0; x < WINDOW_WIDTH; x++)
+			_map[y][x].Display();
+}
+
+//void Map2D::DisplayMapUI(sf::Sprite &spWhite, sf::Sprite &spGreen, sf::RenderWindow &window) {
+//	for (int y = 0; y < WINDOW_HEIGHT; y++)
+//		for (int x = 0; x < WINDOW_WIDTH; x++)
+//		{
+//			if (_map[y][x].GetC() == '#') {
+//				spGreen.setPosition(x*sizeCell*ScaleMap , y*sizeCell*ScaleMap);
+//				window.draw(spGreen);
+//			}
+//			else {
+//				spWhite.setPosition(x*sizeCell*ScaleMap, y*sizeCell*ScaleMap);
+//				window.draw(spWhite);
+//			}
+//		}
+//}
+
+///////////////////////////////////////////////////////////////////////////
+
+//Bomberman.h
+#pragma once
+#include "Point2D.h"
+//#include "Wall.h"
+//#include "Brick.h"
+//#include "Portal.h"
+//#include "Bomb.h"
+
+class BomberMan
+{
+public:
+	BomberMan();
+	~BomberMan();
+	Point2D	_bomberMan;
+	int 	_speed;
+	int 	_liveLeft;
+	char	_direction;
+public:
+	int		GetX();
+	int		GetY();
+	void	Move(bool &setBomb);
+	void	TurnUp();
+	void	TurnDown();
+	void	TurnLeft();
+	void	TurnRight();
+	void	Display();
+
+//	void	SetBomb(Bomb &bomb, Wall wall, Brick brick, Portal portal);
+//	void	GetPortal(Portal portal, Bomb bomb);
+	void	SpeedUp();
+	bool	CheckIsDead();
+private:
+};
+
+///////////////////////////////////////////////////////////////////////////
+
+//Bomberman.cpp
+#include "Bomberman.h"
+
+BomberMan::BomberMan()
+{
+	_bomberMan = Point2D(1,1,'M');
+	_speed = 1000;
+	_liveLeft = 3;
+	_direction = ' ';
+}
+
+BomberMan::~BomberMan()
+{
+
+}
+
+void BomberMan::Move(bool &setBomb)
+{
+	//Sleep(_speed);
+	if(setBomb == false) 
+	{
+		_bomberMan.Clean();
+	}
+	if(_direction == 'w')
+	{
+		_bomberMan.MoveUp();
+	}
+	else if(_direction == 's')
+		_bomberMan.MoveDown();
+	else if(_direction == 'a')
+		_bomberMan.MoveLeft();
+	else if(_direction == 'd')
+		_bomberMan.MoveRight();
+	setBomb = false;
+	
+}
+void BomberMan::TurnUp()
+{
+	_direction = 'w';
+}
+void BomberMan::TurnDown()
+{
+	_direction = 's';
+}
+void BomberMan::TurnLeft()
+{
+	_direction = 'a';
+}
+void BomberMan::TurnRight()
+{
+	_direction = 'd';
+}
+void BomberMan::Display()
+{
+	_bomberMan.Display();
+}
+int BomberMan::GetX()
+{
+	int x;
+	return x = _bomberMan.GetX();
+}
+int BomberMan::GetY()
+{
+	int y;
+	return y = _bomberMan.GetY();
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+//Bomb.h
+#pragma once
+#include "Point2D.h"
+//#include "Wall.h"
+//#include "Brick.h"
+//#include "Portal.h"
+
+class Bomb
+{
+public:
+	Bomb();
+	~Bomb();
+
+	Point2D _bomb;
+	int		_power;
+	bool	_setBoml;
+	bool	_isExplosion;
+
+	//void	BombExplosion(Wall wall, Brick brick, Portal portal);
+//	void	SetBomb(int x, int y);
+	void	DisplayBomb(int x, int y);
+	void	PowerUp();
+//	Point2D	CheckPosition(int x, int y, Wall wall, Brick brick, int &id);
+private:
+};
+
+///////////////////////////////////////////////////////////////////////////
+
+//Bomb.cpp
+#include "Bomb.h"
+
+Bomb::Bomb()
+{
+	
+}
+
+Bomb::~Bomb()
+{
+
+}
+
+void Bomb::DisplayBomb(int x, int y)
+{
+	Point2D _bomb(x, y,'o');
+	_bomb.Display();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+
+//MainUI.cpp
+//#include <iostream>
+//#include <SFML/Graphics.hpp>
+//#include "Util.h"
+//#include "Point2D.h"
+//#include "Map2D.h"
+//#include <conio.h> 
+//#include <time.h>
+//#include <thread>
+//
+//#pragma comment (lib, "sfml-graphics-d.lib")
+//#pragma comment (lib, "sfml-audio-d.lib")
+//#pragma comment (lib, "sfml-network-d.lib")
+//#pragma comment (lib, "sfml-window-d.lib")
+//#pragma comment (lib, "sfml-system-d.lib")
+//
+//using namespace std;
+//using namespace sf;
+//int main() {
+//	//create Object
+//	
+//	Map2D map;
+//
+//	//create UI
+//	sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH*sizeCell*ScaleMap , WINDOW_HEIGHT*sizeCell*ScaleMap), "SFML example.");
+//	
+//	Texture t1, t2, t3;
+//	t1.loadFromFile("data/white.png");
+//	t2.loadFromFile("data/pink.png");
+//	t3.loadFromFile("data/blue.png");
+//	
+//	Sprite spriteWhite(t1);
+//	Sprite spritePink(t2);
+//	Sprite spriteBlue(t3);
+//
+//	while (window.isOpen()) {
+//		//Event e;
+//		//while (window.pollEvent(e))
+//		//{
+//		//	if (e.type == Event::Closed)
+//		//		window.close();
+//		//}
+//
+//		//if (Keyboard::isKeyPressed(Keyboard::Left)) snake.TurnLeft();
+//		//if (Keyboard::isKeyPressed(Keyboard::Right))  snake.TurnRight();
+//		//if (Keyboard::isKeyPressed(Keyboard::Up)) snake.TurnUp();
+//		//if (Keyboard::isKeyPressed(Keyboard::Down)) snake.TurnDown();
+//
+//		////Process
+//		//snake.Move();
+//		//snake.Catch(&worm);
+//		//if (snake.CheckIsDead()) {
+//		//	break;
+//		//}
+//
+//		////update UI
+//		//window.clear();
+//		map.DisplayMapUI(spriteWhite, spriteBlue, window);
+//		//worm.DisplayWormUI(spritePink, window);
+//		//snake.DisplayUI(spritePink, window);
+//		window.display();
+//	}
+//
+//	return 0;
+//}
+
+/////////////////////////////////////////////////////////////////////////////
+
+//Main.cpp
+#include <iostream>
+#include "Util.h"
+#include "Point2D.h"
+#include "Bomb.h"
+#include "Map2D.h"
+#include <conio.h>
+#include "Bomberman.h"
+
+using namespace std;
+int main()
+{
+	Map2D map;
+	map.DisplayMap();
+	BomberMan bomMan;
+	bomMan.Display();
+	Bomb bomb;
+	bool setBomb = false;
+	while (1)
+	{
+		
+		if(_kbhit() == true)
+		{
+			char ch = _getch();
+			int checkWall = 0;
+			
+			if(ch == 'w') 
+			{
+				int x = bomMan.GetX();
+				int y = bomMan.GetY();
+				char c = map.GetC(x,y-1);
+				if(c != '#')
+				{
+					bomMan.TurnUp();
+					checkWall++;
+				}
+			}
+			else if(ch == 'd') 
+			{
+				int x = bomMan.GetX();
+				int y = bomMan.GetY();
+				char c = map.GetC(x+1,y);
+				if(c != '#')
+				{
+					bomMan.TurnRight();
+					checkWall++;
+				}
+			}
+			else if(ch == 'a')
+			{
+				int x = bomMan.GetX();
+				int y = bomMan.GetY();
+				char c = map.GetC(x-1,y);
+				if(c != '#')
+				{
+					bomMan.TurnLeft();
+					checkWall++;
+				}
+			}
+			else if(ch == 's')
+			{
+				int x = bomMan.GetX();
+				int y = bomMan.GetY();
+				char c = map.GetC(x,y+1);
+				if(c != '#')
+				{
+					bomMan.TurnDown();
+					checkWall++;
+				}
+			}
+			int x = bomMan.GetX();
+			int y = bomMan.GetY();
+
+			if(checkWall == 1)	
+			{
+				bomMan.Move(setBomb);
+				bomMan.Display();
+			}
+
+			if(ch == ' ')
+			{
+				bomb.DisplayBomb(x,y);
+				setBomb = true;
+			}
+		}
+	}
+}
+
