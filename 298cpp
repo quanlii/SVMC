@@ -1,0 +1,1029 @@
+//bomb
+#include "Bomb.h"
+#include <iostream>
+using namespace std;
+
+const int px[4] = { 0, 0, -1, 1 };
+const int py[4] = { -1, 1, 0, 0 };
+
+Bomb::Bomb()
+{
+	_power = 1; _isExplosion = true; _start = 0; _starExplosion = 0;
+}
+
+Bomb::~Bomb() {}
+
+bool Bomb::BombExplosion(Map2D* map, Portal* portal, Brick* brick, Point2D* player, Monster* monster)
+{
+	if (_start > 0 && ((clock() - _start) / (double)CLOCKS_PER_SEC) < 2)
+		return false;
+	_start = 0;
+	int x = _bomb.GetX(), y = _bomb.GetY();
+	bool isBomberManExplosion = false;
+
+	//Hien thi power cua bom
+	bool direct[4] = { true, true, true, true };
+	for (int i = 1; i <= _power; ++i)
+	{
+		for (int j = 0; j < 4; ++j)
+		{
+			if (!direct[j]) continue;
+			else
+			{
+				int x1 = x + i * px[j], y1 = y + i * py[j];
+				
+				int idMonster = monster->GetIdOfMonster(x1, y1);
+				if (idMonster < MAX_MONSTER) monster->_checkDead[idMonster] = true;
+
+				if (x1 == player->GetX() && y1 == player->GetY()) isBomberManExplosion = true;
+
+				if (map->_map[y1][x1].GetC() == 'W' || map->_map[y1][x1].GetC() == '#')
+				{
+					direct[j] = false;
+					continue;
+				}
+
+				if (map->_map[y1][x1].GetC() == 'B' && !brick->_isDestroyed[y1][x1])
+				{
+					int idPortal = portal->GetIdOfPortal(x1, y1);
+					map->_map[y1][x1] = Point2D(x1, y1, '=');
+					_portalBehind[j][i - 1] = portal->_portal[idPortal];
+					direct[j] = false;
+					brick->_isDestroyed[y1][x1] = true;
+				}
+				if (map->_map[y1][x1].GetC() == ' ') map->_map[y1][x1] = Point2D(x1, y1, '=');
+				map->_map[y1][x1].Display();
+			}
+		}
+	}
+	map->_map[y][x] = Point2D(x, y, '='); map->_map[y][x].Display();
+	_isExplosion = true;
+	_starExplosion = clock(); _isReset = false;
+	if (x == player->GetX() && y == player->GetY()) isBomberManExplosion = true;
+
+	if (isBomberManExplosion) return true;
+	else return false;
+}
+
+bool Bomb::BombExplosionMode2(Map2D* map, Portal* portal, Brick* brick, Point2D* player, Point2D* competitor, Monster* monster, int& score, bool& checkCompetitor)
+{
+	if (_start > 0 && ((clock() - _start) / (double)CLOCKS_PER_SEC) < 2)
+		return false;
+	_start = 0;
+	int x = _bomb.GetX(), y = _bomb.GetY();
+	bool isBomberManExplosion = false;
+
+	//Hien thi power cua bom
+	GoToXY(x, y); cout << '=';
+	bool direct[4] = { true, true, true, true };
+	for (int i = 1; i <= _power; ++i)
+	{
+		for (int j = 0; j < 4; ++j)
+		{
+			if (!direct[j]) continue;
+			else
+			{
+				int x1 = x + i * px[j], y1 = y + i * py[j];
+				if (map->_map[y1][x1].GetC() == 'W' || map->_map[y1][x1].GetC() == '#') { direct[j] = false; continue; }
+				else
+				{
+					GoToXY(x1, y1), cout << '=';
+					if (map->_map[y1][x1].GetC() == 'B') direct[j] = false;
+				}
+			}
+		}
+	}
+	Sleep(90);
+
+	checkCompetitor = false;
+	//Hien thi portal
+	direct[0] = direct[1] = direct[2] = direct[3] = true;
+	for (int i = 1; i <= _power; ++i)
+	{
+		for (int j = 0; j < 4; ++j)
+		{
+			if (!direct[j]) continue;
+			else
+			{
+				int x1 = x + i * px[j], y1 = y + i * py[j];
+				int idPortal = portal->GetIdOfPortal(x1, y1);
+				int idMonster = monster->GetIdOfMonster(x1, y1);
+
+				if (idMonster < MAX_MONSTER)
+				{
+					monster->_checkDead[idMonster] = true;
+					score += 100;
+				}
+				if (x1 == player->GetX() && y1 == player->GetY()) isBomberManExplosion = true;
+				if (x1 == competitor->GetX() && y1 == competitor->GetY())
+				{
+					map->_map[y1][x1] = Point2D(x1, y1, ' ');
+					checkCompetitor = true;
+					score += 100;
+				}
+
+				if (map->_map[y1][x1].GetC() == 'W' || map->_map[y1][x1].GetC() == '#')
+				{
+					direct[j] = false;
+					continue;
+				}
+
+				if (map->_map[y1][x1].GetC() == 'B' && !brick->_isDestroyed[y1][x1])
+				{
+					map->_map[y1][x1] = portal->_portal[idPortal];
+					score += 50;
+					direct[j] = false;
+					brick->_isDestroyed[y1][x1] = true;
+				}
+				map->_map[y1][x1].Display();
+			}
+		}
+	}
+	map->_map[y][x] = Point2D(x, y, ' '); map->_map[y][x].Display();
+	_isExplosion = true;
+	if (x == player->GetX() && y == player->GetY()) isBomberManExplosion = true;
+
+	if (isBomberManExplosion) return true;
+	else return false;
+}
+
+void Bomb::SetBomb(int x, int y, Map2D* map)
+{
+	if (map->_map[y][x].GetC() == ' ')
+	{
+		_bomb = Point2D(x, y, 'O');
+		map->_map[y][x] = _bomb;
+		_bomb.Display();
+	}
+	_isExplosion = false;
+	_start = clock();
+}
+
+void Bomb::PowerUp()
+{
+	if (_power < 5) ++_power;
+}
+
+void Bomb::ResetBomb()
+{
+	_power = 1; 
+}
+
+void Bomb::ResetDisplayBomb(Map2D *map)
+{
+	if(_isReset) return;
+	if (_starExplosion > 0 && ((clock() - _starExplosion) / (double)CLOCKS_PER_SEC) < 0.09) return;
+	
+	for (int y = 0; y < MAX_HEIGHT; ++y)
+		for (int x = 0; x < MAX_WIDTH; ++x)
+			if(map->_map[y][x].GetC() == '=') map->_map[y][x] = Point2D(x, y, ' ');
+
+	for(int i = 0; i < 4; ++i)
+		for(int j = 0; j < _power; ++j)
+		{
+			int x = _portalBehind[i][j].GetX(), y = _portalBehind[i][j].GetY();
+			if(_portalBehind[i][j].GetC() == 'S' || _portalBehind[i][j].GetC() == 'P')
+			{
+				map->_map[y][x] = _portalBehind[i][j];
+				_portalBehind[i][j] = Point2D(x, y, ' ');
+			}
+		}
+
+	_isReset = true;
+}
+
+
+//bomberman
+#include <iostream>
+#include "BomberMan.h"
+using namespace std;
+
+BomberMan::BomberMan(int x, int y, char icon)
+{
+	_speed = 100;
+	_direction = 80;
+	_bomberMan = Point2D(x, y, icon);
+	_liveLeft = 3;
+	_start = 0;
+}
+
+BomberMan :: ~BomberMan()
+{
+}
+
+void BomberMan::Display()
+{
+	_bomberMan.Display();
+}
+
+void BomberMan::ResetBomberMan(Bomb* bomb)
+{
+	--_liveLeft; _speed = 100;
+	bomb->ResetBomb();
+	_bomberMan = Point2D(1, 1, 'X');
+	_bomberMan.Display();
+}
+
+void BomberMan::ResetBomberManMode2(Bomb* bomb, int x, int y, char icon)
+{
+	if(_liveLeft > 0)
+	{
+		--_liveLeft; _speed = 100;
+		bomb->ResetBomb();
+		_bomberMan = Point2D(x, y, icon);
+	}
+	else _bomberMan = Point2D(0, 0, '#');
+	_bomberMan.Display();
+}
+
+bool BomberMan::CheckIsDead()
+{
+	if (_liveLeft <= 0) return true;
+	return false;
+}
+
+void BomberMan::GetPortal(Map2D* map, Bomb* bomb, Portal* portal)
+{
+	int x = _bomberMan.GetX(), y = _bomberMan.GetY();
+	int idPortal = portal->GetIdOfPortal(x, y);
+	if (map->_map[y][x].GetC() == 'S' && !portal->_isGot[idPortal])
+	{
+		SpeedUp();
+		map->_map[y][x] = Point2D(x, y, ' ');
+		portal->_isGot[idPortal] = true;
+	}
+	if (map->_map[y][x].GetC() == 'P' && !portal->_isGot[idPortal])
+	{
+		bomb->PowerUp(),
+		map->_map[y][x] = Point2D(x, y, ' ');
+		portal->_isGot[idPortal] = true;
+	}
+}
+
+void BomberMan::SetBomb(Bomb* bomb, Map2D* map)
+{
+	if (bomb->_isExplosion) bomb->SetBomb(_bomberMan.GetX(), _bomberMan.GetY(), map);
+}
+
+void BomberMan::TurnUp(Map2D* map)
+{
+	if (CheckPosition(_bomberMan.GetX(), _bomberMan.GetY() - 1, map)) _bomberMan.MoveUp();
+}
+
+void BomberMan::TurnDown(Map2D* map)
+{
+	if (CheckPosition(_bomberMan.GetX(), _bomberMan.GetY() + 1, map)) _bomberMan.MoveDown();
+}
+
+void BomberMan::TurnLeft(Map2D* map)
+{
+	if (CheckPosition(_bomberMan.GetX() - 1, _bomberMan.GetY(), map)) _bomberMan.MoveLeft();
+}
+
+void BomberMan::TurnRight(Map2D* map)
+{
+	if (CheckPosition(_bomberMan.GetX() + 1, _bomberMan.GetY(), map)) _bomberMan.MoveRight();
+}
+
+void BomberMan::Move(Map2D* map, char direction, Bomb* bomb)
+{
+	int x = _bomberMan.GetX(), y = _bomberMan.GetY();
+	if (_start > 0 && ((clock() - _start) / (double)CLOCKS_PER_SEC) < (float)_speed / 1000.0) return;
+	_start = 0;
+	_bomberMan.Clear();
+	if (direction == 72 || direction == 'w') TurnUp(map);
+	else if (direction == 80 || direction == 's') TurnDown(map);
+	else if (direction == 75 || direction == 'a') TurnLeft(map);
+	else if (direction == 77 || direction == 'd') TurnRight(map);
+	if (!bomb->_isExplosion)
+	{
+		map->_map[bomb->_bomb.GetY()][bomb->_bomb.GetX()] = Point2D(bomb->_bomb.GetX(), bomb->_bomb.GetY(), 'O');
+		bomb->_bomb.Display();
+	}
+}
+
+void BomberMan::SpeedUp()
+{
+	if (_speed > 25) _speed -= 25;
+}
+
+bool BomberMan::CheckPosition(int x, int y, Map2D* map)
+{
+	if (map->_map[y][x].GetC() == 'S' || map->_map[y][x].GetC() == 'P' || map->_map[y][x].GetC() == ' ') return true;
+	return false;
+}
+
+bool BomberMan::CollideMonster(Monster* monster)
+{
+	for (int i = 0; i < MAX_MONSTER; ++i)
+		if (!monster->_checkDead[i] && _bomberMan.GetX() == monster->_monster[i].GetX() && _bomberMan.GetY() == monster->_monster[i].GetY())
+			return true;
+	return false;
+}
+
+void BomberMan::DisplayBomberManUI(sf::Sprite &spBomberMan, sf::RenderWindow &window)
+{
+	if ( _bomberMan.GetC() == 'X') 
+	{
+		spBomberMan.setPosition(_bomberMan.GetX()*sizeCell, _bomberMan.GetY()*sizeCell);
+		window.draw(spBomberMan);
+	}
+
+}
+
+//brick
+#include "Brick.h"
+#include <iostream>
+using namespace std;
+
+Brick::Brick() {}
+
+void Brick::InitBrick(Map2D* map)
+{
+	int x, y;
+	for (int i = 0; i < _numberOfBrick; ++i)
+	{
+		while (true)
+		{
+			x = GetRandomNumber(MAX_WIDTH - 2) + 1;
+			y = GetRandomNumber(MAX_HEIGHT - 2) + 1;
+			if ((x < 3 && y < 3) || (x > 14 && y > 14)) continue;
+			if (map->_map[y][x].GetC() == ' ')
+			{
+				_brick[i] = Point2D(x, y, 'B');
+				map->_map[y][x] = _brick[i];
+				_isDestroyed[y][x] = false;
+				break;
+			}
+		}
+	}
+}
+
+Brick::Brick(Map2D* map)
+{
+	_numberOfBrick = MAX_BRICK;
+	for (int i = 0; i < MAX_HEIGHT; ++i)
+		for (int j = 0; j < MAX_WIDTH; ++j) _isDestroyed[i][j] = true;
+	InitBrick(map);
+}
+
+Brick::~Brick() {}
+
+bool Brick::IsDestroyed()
+{
+	for (int i = 0; i < MAX_HEIGHT; ++i)
+		for (int j = 0; j < MAX_WIDTH; ++j)
+			if (!_isDestroyed[i][j]) return false;
+	return true;
+}
+
+int Brick::GetNumberOfBrick() { return _numberOfBrick; }
+
+//game
+#include "Game.h"
+#include "UI.h"
+
+char ch;
+
+GameBomberMan::GameBomberMan()
+{
+	map = new Map2D;
+	wall = new Wall(map);
+	brick = new Brick(map);
+	portal = new Portal(brick);
+	monster = new Monster(map);
+	bomb1 = new Bomb; bomb2 = new Bomb;
+	player1 = new BomberMan(1, 1, 'X');
+	player2 = new BomberMan(15, 15, 'Y');
+}
+
+GameBomberMan::~GameBomberMan()
+{
+	delete map;
+	delete wall;
+	delete brick;
+	delete portal;
+	delete monster;
+}
+
+void GameBomberMan::OnePlayerMode(UI *ui)
+{
+	system("CLS");
+	bool finish = false;
+
+	while (ui->window->isOpen()) 
+	{
+		Event e;
+		
+		while (ui->window->pollEvent(e))
+		{
+			if (e.type == Event::Closed)
+				ui->window->close();
+
+			ch = 0;
+			if(e.type == sf::Event::KeyPressed && e.key.code == sf::Keyboard::Left) ch=75;
+			else if(e.type == sf::Event::KeyPressed && e.key.code == sf::Keyboard::Right) ch=77;
+			else if(e.type == sf::Event::KeyPressed && e.key.code == sf::Keyboard::Up) ch=72;
+			else if(e.type == sf::Event::KeyPressed && e.key.code == sf::Keyboard::Down) ch=80;
+			else if (e.type == sf::Event::KeyPressed && e.key.code == sf::Keyboard::Space) ch = 57;
+		
+			//if (Keyboard::isKeyPressed(Keyboard::Left)) ch = 75;
+			//if (Keyboard::isKeyPressed(Keyboard::Right)) ch = 77;
+			//if (Keyboard::isKeyPressed(Keyboard::Up)) ch = 72;
+			//if (Keyboard::isKeyPressed(Keyboard::Down)) ch = 80;
+		
+			if (ch == 72 || ch == 80 || ch == 75 || ch == 77) player1->Move(map, ch, bomb1);
+			else if (ch == 57 ) player1->SetBomb(bomb1, map);
+
+		}
+		monster->Move(map);
+		player1->GetPortal(map, bomb1, portal);
+		if (!bomb1->_isExplosion)
+		{
+			if (bomb1->BombExplosion(map, portal, brick, &player1->_bomberMan, monster)) player1->ResetBomberMan(bomb1);
+			//bomb1->DisplayBombUI(*ui->spriteBombExplosion, *ui->window);
+		}
+		
+		if (player1->CollideMonster(monster))
+		{
+			player1->ResetBomberMan(bomb1); GoToXY(17, MAX_HEIGHT);
+			cout << player1->_liveLeft << endl;
+		}	
+		if (brick->IsDestroyed() || !player1->_liveLeft || monster->IsDeadAll())
+		{		
+			finish = true;	break;
+		}
+		bomb1->ResetDisplayBomb(map);
+
+		//update UI
+		ui->window->clear();
+		ui->DisplayMap(map); 
+		monster->DisplayMonsterUI(*ui->spriteMonster, *ui->window);	
+		player1->DisplayBomberManUI(*ui->spriteBomberMan, *ui->window);
+		ui->window->display();
+
+		GoToXY(0, MAX_HEIGHT);  cout << "Remaining lives: " << player1->_liveLeft;
+
+	}
+	system("CLS");
+	if (brick->IsDestroyed() || monster->IsDeadAll()) cout << "CHUC MUNG BAN DA CHIEN THANG";
+	else if (player1->_liveLeft == 0) cout << "GAME OVER";
+}
+
+void GameBomberMan::TwoPlayersMode()
+{
+	system("CLS");
+
+	bool finish = false;
+	int scorePlayer1 = 0, scorePlayer2 = 0;
+
+	map->DisplayMap(); player1->Display(); player2->Display();
+	GoToXY(0, MAX_HEIGHT);  cout << "Remaining lives of player 1: " << player1->_liveLeft;
+	GoToXY(0, MAX_HEIGHT + 1);  cout << "Score of player 1: " << scorePlayer1;
+	GoToXY(0, MAX_HEIGHT + 2);  cout << "Remaining lives of player 2: " << player2->_liveLeft;
+	GoToXY(0, MAX_HEIGHT + 3);  cout << "Score of player 2: " << scorePlayer2;
+
+	while (1)
+	{
+		if (_kbhit())
+		{
+			char ch = _getch();
+			if (ch == 72 || ch == 80 || ch == 75 || ch == 77) player2->Move(map, ch, bomb2);
+			else if (ch == 'w' || ch == 'a' || ch == 's' || ch == 'd') player1->Move(map, ch, bomb1);
+			else if (ch == 13) player2->SetBomb(bomb2, map);
+			else if (ch == ' ') player1->SetBomb(bomb1, map);
+			else if (ch == 'p') char ctmp = _getch();
+		}
+
+		if (!player1->CheckIsDead())
+		{
+			player1->Display();
+			player1->GetPortal(map, bomb1, portal); GoToXY(19, MAX_HEIGHT + 1);  cout << scorePlayer1;
+			if (!bomb1->_isExplosion)
+			{
+				bool isCompetitorDead = player2->CheckIsDead();
+				if (bomb1->BombExplosionMode2(map, portal, brick, &player1->_bomberMan, &player2->_bomberMan, monster, scorePlayer1, isCompetitorDead))
+				{
+					player1->ResetBomberManMode2(bomb1, 1, 1, 'X');
+					GoToXY(29, MAX_HEIGHT);	cout << player1->_liveLeft;
+				}
+				if (isCompetitorDead)
+				{
+					player2->ResetBomberManMode2(bomb2, 15, 15, 'Y');
+					GoToXY(29, MAX_HEIGHT + 2);	cout << player2->_liveLeft;
+				}
+				GoToXY(19, MAX_HEIGHT + 1);  cout << scorePlayer1;
+			}
+			if (player1->CollideMonster(monster))
+			{
+				player1->ResetBomberManMode2(bomb1, 1, 1, 'X');
+				GoToXY(29, MAX_HEIGHT);	cout << player1->_liveLeft;
+			}
+		}
+
+		if (!player2->CheckIsDead())
+		{
+			player2->Display();
+			player2->GetPortal(map, bomb2, portal); GoToXY(19, MAX_HEIGHT + 3);  cout << scorePlayer2;
+			if (!bomb2->_isExplosion && !player2->CheckIsDead())
+			{
+				bool isCompetitorDead = player1->CheckIsDead();
+				if (bomb2->BombExplosionMode2(map, portal, brick, &player2->_bomberMan, &player1->_bomberMan, monster, scorePlayer2, isCompetitorDead))
+				{
+					player2->ResetBomberManMode2(bomb2, 15, 15, 'Y');
+					GoToXY(29, MAX_HEIGHT + 2);	cout << player2->_liveLeft;
+				}
+				if (isCompetitorDead)
+				{
+					player1->ResetBomberManMode2(bomb1, 1, 1, 'X');
+					GoToXY(29, MAX_HEIGHT);	cout << player1->_liveLeft;
+				}
+				GoToXY(19, MAX_HEIGHT + 3);  cout << scorePlayer2;
+			}
+
+			if (player2->CollideMonster(monster))
+			{
+				player2->ResetBomberManMode2(bomb2, 15, 15, 'Y');
+				GoToXY(29, MAX_HEIGHT + 2);	cout << player2->_liveLeft;
+			}
+		}
+		monster->Move(map);
+		monster->Display();
+
+		if (brick->IsDestroyed() || monster->IsDeadAll() || (player2->CheckIsDead() && player1->CheckIsDead()))
+		{
+			finish = true;
+			break;
+		}
+	}
+	system("CLS");
+	cout << scorePlayer1 << " " << scorePlayer2 << endl;
+
+	if (scorePlayer1 > scorePlayer2) cout << "PLAYER 1 WIN!";
+	else if (scorePlayer1 < scorePlayer2) cout << "PLAYER 2 WIN!";
+	else cout << "DRAW!";
+}
+
+//main
+#include <iostream>
+#include "Game.h"
+#include "UI.h"
+using namespace std;
+
+int main()
+{
+
+	char turn = 'Y';
+
+	while (turn == 'Y')
+	{
+		system("CLS");
+		GameBomberMan* newGame = new GameBomberMan;
+		UI* ui = new UI;
+		int mode = 0;
+
+		cout << "Choose player mode: " << endl;
+		cout << "1. 1 player \t2. 2 players" << endl;
+		cout << "Your choice: "; cin >> mode;
+
+		while (mode != 1 && mode != 2)
+		{
+			cout << "Your choice: "; cin >> mode;
+		}
+
+		if (mode == 1) newGame->OnePlayerMode(ui);
+		else newGame->TwoPlayersMode();
+		//Sleep(3000);
+
+		cout << "\nDo you want to play again? y/n?" << endl;
+		cin >> turn;
+		turn = toupper(turn);
+	}
+	return 0;
+}
+
+/map2d
+#include "Map2D.h"
+
+void Map2D::InitMap()
+{
+	for (int y = 0; y < MAX_HEIGHT; ++y)
+		for (int x = 0; x < MAX_WIDTH; ++x)
+		{
+			if (x == 0 || x == MAX_WIDTH - 1 || y == 0 || y == MAX_HEIGHT - 1)
+				_map[y][x] = Point2D(x, y, '#');
+			else _map[y][x] = Point2D(x, y, ' ');
+		}
+}
+
+Map2D::Map2D() { InitMap(); }
+
+Map2D::~Map2D() {}
+
+void Map2D::DisplayMap()
+{
+	for (int y = 0; y < MAX_HEIGHT; ++y)
+		for (int x = 0; x < MAX_WIDTH; ++x)
+			_map[y][x].Display();
+}
+//void Map2D::DisplayMapUI(sf::Sprite &spBackground, sf::Sprite &spBomb, sf::Sprite &spWall, sf::Sprite &spBrick, sf::RenderWindow &window) {
+//	for (int y = 0; y < MAX_HEIGHT; y++)
+//		for (int x = 0; x < MAX_WIDTH; x++)
+//		{
+//			if (_map[y][x].GetC() == '#'||_map[y][x].GetC() == 'W')
+//			{
+//				spWall.setPosition(x*sizeCell, y*sizeCell);
+//				window.draw(spWall);
+//			}
+//			
+//			else if (_map[y][x].GetC() == 'B')
+//			{
+//				spBrick.setPosition(x*sizeCell, y*sizeCell);
+//				window.draw(spBrick);
+//			}
+//			else if (_map[y][x].GetC() == 'O')
+//			{
+//				spBomb.setPosition(x*sizeCell, y*sizeCell);
+//				window.draw(spBomb);
+//			}
+//			else {
+//				spBackground.setPosition(x*sizeCell, y*sizeCell);
+//				window.draw(spBackground);
+//			}
+//		}
+//}
+
+//monster
+#include <iostream>
+#include <SFML/Graphics.hpp>
+#include "Point2D.h"
+#include "Monster.h"
+#include "Until.h"
+using namespace std;
+
+Monster::Monster(Map2D* map)
+{
+	int x, y;
+	for (int i = 0; i < MAX_MONSTER; ++i)
+	{
+		while (true)
+		{
+			x = GetRandomNumber(MAX_WIDTH - 2) + 1;
+			y = GetRandomNumber(MAX_HEIGHT - 2) + 1;
+			if ((x < 3 && y < 3) || (x > 14 && y > 14)) continue;
+			if (map->_map[y][x].GetC() == ' ')
+			{
+				_monster[i] = Point2D(x, y, '$');
+				break;
+			}
+		}
+		_checkDead[i] = false;
+		_direction[i] = 0;
+	}
+	_start = 0;
+}
+
+Monster::Monster() {}
+
+Monster :: ~Monster() {}
+
+void Monster::Display()
+{
+	for (int i = 0; i < MAX_MONSTER; ++i)
+		if (!_checkDead[i]) _monster[i].Display();
+}
+
+void Monster::TurnUp(Map2D* map, Point2D* monster, int& direction)
+{
+	if (CheckPosition(monster->GetX(), monster->GetY() - 1, map)) monster->MoveUp();
+	else direction = rand() % 4;
+}
+
+void Monster::TurnDown(Map2D* map, Point2D* monster, int& direction)
+{
+	if (CheckPosition(monster->GetX(), monster->GetY() + 1, map)) monster->MoveDown();
+	else direction = rand() % 4;
+}
+
+void Monster::TurnLeft(Map2D* map, Point2D* monster, int& direction)
+{
+	if (CheckPosition(monster->GetX() - 1, monster->GetY(), map)) monster->MoveLeft();
+	else direction = rand() % 4;
+}
+
+void Monster::TurnRight(Map2D* map, Point2D* monster, int& direction)
+{
+	if (CheckPosition(monster->GetX() + 1, monster->GetY(), map)) monster->MoveRight();
+	else direction = rand() % 4;
+}
+
+void Monster::Move(Map2D* map)
+{
+	if (((clock() - _start) / (double)CLOCKS_PER_SEC) < 0.5)
+		return;
+	for (int i = 0; i < MAX_MONSTER; ++i)
+	{
+		int x = _monster[i].GetX(), y = _monster[i].GetY();
+		_monster[i].Clear(); map->_map[y][x].Display();
+		if (_direction[i] == 0) TurnUp(map, &_monster[i], _direction[i]);
+		else if (_direction[i] == 1) TurnDown(map, &_monster[i], _direction[i]);
+		else if (_direction[i] == 2) TurnLeft(map, &_monster[i], _direction[i]);
+		else if (_direction[i] == 3) TurnRight(map, &_monster[i], _direction[i]);
+	}
+	_start = clock();
+}
+
+bool Monster::CheckPosition(int x, int y, Map2D* map)
+{
+	if (map->_map[y][x].GetC() == ' '  || map->_map[y][x].GetC() == 'S' || map->_map[y][x].GetC() == 'P') return true;
+	return false;
+}
+
+int	Monster::GetIdOfMonster(int x, int y)
+{
+	for (int i = 0; i < MAX_MONSTER; ++i)
+		if (x == _monster[i].GetX() && y == _monster[i].GetY()) return i;
+	return MAX_MONSTER;
+}
+
+bool Monster::IsDeadAll()
+{
+	for (int i = 0; i < MAX_MONSTER; ++i)
+		if (!_checkDead[i]) return false;
+	return true;
+}
+
+void Monster::DisplayMonsterUI(sf::Sprite& spMonster, sf::RenderWindow& window)
+{
+	for (int i = 0; i < MAX_MONSTER; ++i)
+	{
+		if (!_checkDead[i])
+		{
+			if (_monster[i].GetC() == '$')
+			{
+				//window.clear();
+				//_monster[i-1].Clear();
+				spMonster.setPosition(_monster[i].GetX() * sizeCell, _monster[i].GetY() * sizeCell);
+				window.draw(spMonster);
+			}
+		}
+	}
+}
+
+
+//point2D
+#include <iostream>
+#include "Point2D.h"
+#include "Until.h"
+using namespace std;
+
+Point2D::Point2D() {}
+
+Point2D::~Point2D() {}
+
+Point2D::Point2D(int x, int y, char c)
+{
+	_x = x, _y = y; _c = c;
+}
+
+int Point2D::GetX() { return _x; }
+
+int Point2D::GetY() { return _y; }
+
+char Point2D::GetC() { return _c; }
+
+void Point2D::SetX(int x) { _x = x; }
+
+void Point2D::SetY(int y) { _y = y; }
+
+void Point2D::Display()
+{
+	GoToXY(_x, _y);
+	cout << _c;
+}
+
+void Point2D::Clear()
+{
+	GoToXY(_x, _y);
+	cout << ' ';
+}
+
+void Point2D::MoveUp() { _y--; }
+
+void Point2D::MoveDown() { _y++; }
+
+void Point2D::MoveLeft() { _x--; }
+
+void Point2D::MoveRight() { _x++; }
+
+
+
+//portal
+#include "Portal.h"
+
+Portal::Portal() {}
+
+void Portal::SetPortal(Brick* brick)
+{
+	int x, y, kind;
+	_numberOfPortal = brick->GetNumberOfBrick();
+	for (int i = 0; i < _numberOfPortal; ++i)
+	{
+		x = brick->_brick[i].GetX();
+		y = brick->_brick[i].GetY();
+
+		kind = GetRandomNumber(10000);
+		if (kind % 3 == 0) _portal[i] = Point2D(x, y, ' ');
+		else if (kind % 3 == 1) _portal[i] = Point2D(x, y, 'S'); //Item speed up
+		else if (kind % 3 == 2) _portal[i] = Point2D(x, y, 'P'); //Item power of bomb up
+		_isGot[i] = false;
+	}
+
+}
+
+Portal::Portal(Brick* brick)
+{
+	SetPortal(brick);
+}
+
+
+Portal::~Portal() {}
+
+int Portal::GetKindOfPortal(Point2D* portal)
+{
+	if (portal->GetC() == ' ') return 0;
+	else if (portal->GetC() == 'S') return 1;
+	else if (portal->GetC() == 'P') return 2;
+}
+
+int	Portal::GetIdOfPortal(int x, int y)
+{
+	for (int i = 0; i < _numberOfPortal; ++i)
+		if (x == _portal[i].GetX() && y == _portal[i].GetY()) return i;
+}
+
+void Portal::DisplayPortal(Point2D* portal)
+{
+	portal->Display();
+}
+
+int Portal::GetNumberOfPortal() { return _numberOfPortal; }
+
+
+//ui
+#include "UI.h"
+#include <time.h>
+#include <SFML/Graphics.hpp>
+#pragma comment (lib, "sfml-graphics-d.lib")
+#pragma comment (lib, "sfml-audio-d.lib")
+#pragma comment (lib, "sfml-network-d.lib")
+#pragma comment (lib, "sfml-window-d.lib")
+#pragma comment (lib, "sfml-system-d.lib")
+using namespace sf;
+using namespace std;
+UI::UI()
+{
+	window = new sf::RenderWindow(sf::VideoMode(MAX_WIDTH * sizeCell, MAX_HEIGHT * sizeCell), "SFML example");
+	window->clear();
+
+	t1 = new sf::Texture();
+	t2 = new sf::Texture();
+	t3 = new sf::Texture();
+	t4 = new sf::Texture();
+	t5 = new sf::Texture();
+	t6 = new sf::Texture();
+	t7 = new sf::Texture();
+	t8 = new sf::Texture();
+	t9 = new sf::Texture();
+
+	t1->loadFromFile("data/Back.png");
+	t2->loadFromFile("data/Wall.png");
+	t3->loadFromFile("data/Brick.png");
+	t4->loadFromFile("data/Bomber.png");
+	t5->loadFromFile("data/Monster.png");
+	t6->loadFromFile("data/Bomb.png");
+	t7->loadFromFile("data/P.png");
+	t8->loadFromFile("data/S.png");
+	t9->loadFromFile("data/BombExplosion.png");
+
+	spriteBackground =		new Sprite(*t1);
+	spriteWall =			new Sprite(*t2);
+	spriteBrick =			new Sprite(*t3);
+	spriteBomberMan =		new Sprite(*t4);
+	spriteMonster =			new Sprite (*t5);
+	spriteBomb =			new Sprite (*t6);
+	spritePortalP =			new Sprite (*t7);
+	spritePortalS =			new Sprite (*t8);
+	spriteBombExplosion =	new Sprite (*t9);
+}
+UI ::~UI() {}
+
+void UI::DisplayMap(Map2D* map)
+{
+	for (int y = 0; y < MAX_HEIGHT; y++)
+		for (int x = 0; x < MAX_WIDTH; x++)
+		{
+			if (map->_map[y][x].GetC() == '#'||map->_map[y][x].GetC() == 'W')
+			{
+				spriteWall->setPosition(x*sizeCell, y*sizeCell);
+				window->draw(*spriteWall);
+			}
+			
+			else if (map->_map[y][x].GetC() == 'B')
+			{
+				spriteBrick->setPosition(x*sizeCell, y*sizeCell);
+				window->draw(*spriteBrick);
+			}
+			else if (map->_map[y][x].GetC() == 'O')
+			{
+				spriteBomb->setPosition(x*sizeCell, y*sizeCell);
+				window->draw(*spriteBomb);
+			}
+			else if (map->_map[y][x].GetC() == 'P')
+			{
+				spritePortalP->setPosition(x*sizeCell, y*sizeCell);
+				window->draw(*spritePortalP);
+			}
+			else if (map->_map[y][x].GetC() == 'S')
+			{
+				spritePortalS->setPosition(x*sizeCell, y*sizeCell);
+				window->draw(*spritePortalS);
+			}
+			else if (map->_map[y][x].GetC() == '=')
+			{
+				spriteBombExplosion->setPosition(x*sizeCell, y*sizeCell);
+				window->draw(*spriteBombExplosion);
+				/*spriteBackground->setPosition(x*sizeCell, y*sizeCell);
+				window->draw(*spriteBackground);*/
+			}
+			else {
+				spriteBackground->setPosition(x*sizeCell, y*sizeCell);
+				window->draw(*spriteBackground);
+			}
+		}
+}
+
+
+//until
+#include "Until.h"
+#include <cstdlib>
+#include <ctime>
+
+void GoToXY(int x, int y)
+{
+	HANDLE Output;
+	COORD Cursor_Pos = { x, y };
+	Output = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleCursorPosition(Output, Cursor_Pos);
+}
+
+int GetRandomNumber(int maxNum)
+{
+	return rand() % maxNum;
+}
+
+
+//wall
+#include "Wall.h"
+#include <iostream>
+using namespace std;
+
+void Wall::InitWall(Map2D* map)
+{
+	/*int x, y;
+	for (int i = 0; i < _numberOfWall; ++i)
+	{
+		while (true)
+		{
+			x = GetRandomNumber(MAX_WIDTH - 2) + 1;
+			y = GetRandomNumber(MAX_HEIGHT - 2) + 1;
+			if(map._map[y][x].GetC() == ' ')
+			{
+				_wall[i] = Point2D(x, y, 'W');
+				map._map[y][x] = _wall[i];
+				break;
+			}
+		}
+	}*/
+	_numberOfWall = 0;
+	for (int y = 2; y < MAX_HEIGHT - 1; y += 2)
+		for (int x = 2; x < MAX_WIDTH - 1; x += 2)
+		{
+			_wall[_numberOfWall] = Point2D(x, y, 'W');
+			map->_map[y][x] = Point2D(x, y, 'W');
+			_numberOfWall++;
+		}
+}
+
+Wall::Wall(Map2D* map)
+{
+	_numberOfWall = 0;
+	InitWall(map);
+}
+
+Wall::Wall() {}
+
+Wall::~Wall() {}
+
+int Wall::GetNumberOfWall() { return _numberOfWall; }
+
