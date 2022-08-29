@@ -1,0 +1,324 @@
+//Bomb.h
+#pragma once
+#include "Point2D.h"
+#include "Wall.h"
+#include "Brick.h"
+#include "Portal.h"
+#include "Monster.h"
+#include "UI.h"
+#include <ctime>
+
+class Bomb
+{
+public:
+	Bomb();
+	~Bomb();
+
+	Point2D _bomb;
+	Point2D _portalBehind[4][5];
+	int		_power;
+	bool	_isExplosion;
+	bool	_isReset;
+	int		_start;
+	int		_starExplosion;
+
+	bool	BombExplosion(Map2D* map, Portal* portal, Brick* brick, Point2D* player, Monster* monster);
+	bool	BombExplosionMode2(Map2D* map, Portal* portal, Brick* brick, Point2D* player, Point2D* competitor, Monster* monster, int& score, bool& checkCompetitor);
+	void	SetBomb(int x, int y, Map2D* map);
+	void	PowerUp();
+	void	ResetBomb();
+	void	ResetDisplayBomb(Map2D *map);
+
+private:
+
+};
+
+//Bomberman.h
+#pragma once
+#include "Point2D.h"
+#include "Wall.h"
+#include "Brick.h"
+#include "Portal.h"
+#include "Bomb.h"
+#include "Monster.h"
+#include <SFML/Graphics.hpp>
+
+class BomberMan
+{
+public:
+	BomberMan(int x, int y, char icon);
+	~BomberMan();
+
+	Point2D	_bomberMan;
+	int		_speed;
+	int		_liveLeft;
+	char	_direction;
+	int		_start;
+
+	void	Move(Map2D* map, char direction, Bomb* bomb);
+	void	TurnUp(Map2D* map);
+	void	TurnDown(Map2D* map);
+	void	TurnLeft(Map2D* map);
+	void	TurnRight(Map2D* map);
+	void	Display();
+	void	DisplayBomberManUI(sf::Sprite &spBomberMan, sf::RenderWindow &window);
+	void	ResetBomberMan(Bomb* bomb);
+	void	ResetBomberManMode2(Bomb* bomb, int x, int y, char icon);
+
+	void	SetBomb(Bomb* bomb, Map2D* map);
+	void	GetPortal(Map2D* map, Bomb* bomb, Portal* portal);
+	void	SpeedUp();
+	bool	CollideMonster(Monster* monster);
+	bool	CheckIsDead();
+	bool	CheckPosition(int x, int y, Map2D* map);
+private:
+
+};
+
+//brick.h
+#pragma once
+#include "Point2D.h"
+#include "Map2D.h"
+
+class Brick
+{
+public:
+	Brick();
+	Brick(Map2D* map);
+	~Brick();
+
+	Point2D _brick[MAX_BRICK];
+	bool	_isDestroyed[MAX_HEIGHT][MAX_WIDTH];
+
+	bool	IsDestroyed();
+	int		GetNumberOfBrick();
+	void	InitBrick(Map2D* map);
+	void	DisplayBrick();
+private:
+	int		_numberOfBrick;
+};
+
+//game
+#pragma once
+#include <iostream>
+#include "Until.h"
+#include "Map2D.h"
+#include "Wall.h"
+#include "Portal.h"
+#include "Brick.h"
+#include "BomberMan.h"
+#include "Bomb.h"
+#include "Monster.h"
+#include "UI.h"
+#include <conio.h>
+#include <thread>
+#include <mutex>
+#include <ctime>
+using namespace std;
+
+class GameBomberMan
+{
+public:
+	GameBomberMan();
+	~GameBomberMan();
+
+	Map2D* map;
+	Wall* wall;
+	Brick* brick;
+	Portal* portal;
+	Monster* monster;
+	Bomb* bomb1, * bomb2;
+	BomberMan* player1, * player2;
+
+	void		OnePlayerMode(UI *ui);
+	void		TwoPlayersMode();
+
+private:
+
+};
+
+//map2d
+#pragma once
+#include "Point2D.h"
+#include "Until.h"
+#include <SFML/Graphics.hpp>
+class Map2D
+{
+public:
+	Map2D();
+	~Map2D();
+	Point2D _map[MAX_HEIGHT][MAX_WIDTH];
+
+	void	InitMap();
+	void	DisplayMap();
+	//void	DisplayMapUI(sf::Sprite &spBackground, sf::Sprite &spBomb, sf::Sprite &spWall, sf::Sprite &spBrick, sf::RenderWindow &window);
+private:
+
+};
+
+//Monstar
+#pragma once
+#include "Map2D.h"
+#include "Point2D.h"
+#include "Until.h"
+#include <SFML/Graphics.hpp>
+#include <ctime>
+class Monster
+{
+public:
+	Monster();
+	Monster(Map2D* map);
+	~Monster();
+
+	int		_start;
+	Point2D _monster[MAX_MONSTER];
+	bool	_checkDead[MAX_MONSTER];
+
+	void 	Move(Map2D* map);
+	void	TurnUp(Map2D* map, Point2D* monster, int& direction);
+	void	TurnDown(Map2D* map, Point2D* monster, int& direction);
+	void	TurnLeft(Map2D* map, Point2D* monster, int& direction);
+	void	TurnRight(Map2D* map, Point2D* monster, int& direction);
+	void	Display();
+	void	DisplayMonsterUI(sf::Sprite& spMonster, sf::RenderWindow& window);
+	bool	CheckPosition(int x, int y, Map2D* map);
+	int		GetIdOfMonster(int x, int y);
+	bool	IsDeadAll();
+private:
+	int		_direction[MAX_MONSTER];
+};
+
+//point2d
+#pragma once
+
+class Point2D
+{
+public:
+	Point2D();
+	Point2D(int x, int y, char c);
+	~Point2D();
+
+	int		GetX();
+	int		GetY();
+	char	GetC();
+	void	SetX(int x);
+	void	SetY(int y);
+
+	void	Display();
+	void	Clear();
+
+	void	MoveUp();
+	void	MoveDown();
+	void	MoveLeft();
+	void	MoveRight();
+
+private:
+	int _x, _y;
+	char _c;
+};
+
+//Portal
+#pragma once
+#include "Brick.h"
+#include "Until.h"
+
+class Portal
+{
+public:
+	Portal();
+	Portal(Brick* brick);
+	~Portal();
+
+	Point2D _portal[MAX_BRICK];
+	bool	_isGot[MAX_BRICK];
+	int		_numberOfPortal;
+
+	int		GetKindOfPortal(Point2D* portal);
+	int		GetNumberOfPortal();
+	int		GetIdOfPortal(int x, int y);
+	void	SetPortal(Brick* brick);
+	void	DisplayPortal(Point2D* portal);
+private:
+
+};
+
+//UI
+#pragma once
+#include <iostream>
+#include <SFML/Graphics.hpp>
+#include "Until.h"
+#include "Map2D.h"
+#include <conio.h> 
+#include <time.h>
+
+#pragma comment (lib, "sfml-graphics-d.lib")
+#pragma comment (lib, "sfml-audio-d.lib")
+#pragma comment (lib, "sfml-network-d.lib")
+#pragma comment (lib, "sfml-window-d.lib")
+#pragma comment (lib, "sfml-system-d.lib")
+
+using namespace std;
+using namespace sf;
+
+class UI
+{
+public:
+	UI();
+	~UI();
+
+	sf::RenderWindow *window;
+	Texture *t1, *t2, *t3, *t4, *t5, *t6, *t7, *t8, *t9;
+	Sprite *spriteBackground;
+	Sprite *spriteBomberMan;
+	Sprite *spriteWall;
+	Sprite *spriteBrick;
+	Sprite *spriteMonster;
+	Sprite *spriteBomb;
+	Sprite *spritePortalP;
+	Sprite *spritePortalS;
+	Sprite *spriteBombExplosion;
+
+	char    StartUI();
+	void	DisplayMap(Map2D* map);
+private:
+
+};
+
+
+//until
+#pragma once
+#include <Windows.h>
+
+//map 15x15
+#define MAX_HEIGHT 17 
+#define MAX_WIDTH 17
+#define MAX_WALL 20
+#define MAX_BRICK 50
+#define MAX_MONSTER 5
+#define sizeCell 50
+
+void GoToXY(int x, int y);
+int GetRandomNumber(int maxNum);
+
+//wall
+#pragma once
+#include "Point2D.h"
+#include "Map2D.h"
+#include "Until.h"
+
+class Wall
+{
+public:
+	Wall();
+	Wall(Map2D* map);
+	~Wall();
+
+	Point2D _wall[10000];
+	int		GetNumberOfWall();
+
+	void	InitWall(Map2D* map);
+private:
+	int _numberOfWall;
+};
+
+
